@@ -1,0 +1,209 @@
+// BLYNK APP CONTROL
+#define BLYNK_TEMPLATE_ID "TMPL2bDvZE80l"
+#define BLYNK_TEMPLATE_NAME "IOT BASED POULTRY FARM MONITORING SYSTEM"
+#define BLYNK_AUTH_TOKEN "GXDGvf4af1_zvfLOrZu9L3wdbbzj51Zd"
+ 
+#define BLYNK_PRINT Serial
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+
+BlynkTimer timer;
+
+//BLYNK APP AND INTENET CONNECTIONS
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "Sadia";
+char pass[] = "Sadia123";
+
+////////////////
+#include <DHT.h>
+#include<LiquidCrystal_I2C.h>
+
+#define DHTPIN 15       
+#define DHTTYPE DHT22    
+int SoilPin = 26;
+int Ldr=19;
+int firePin=25;
+int Redpin = 12;
+int green = 14;
+int Buzzerpin = 27;
+#define relay1 16  
+#define relay2 17  
+#define relay3 18   
+
+DHT dht(DHTPIN, DHTTYPE);
+LiquidCrystal_I2C lcd(0x27, 16, 2);  // Adjust the I2C address if necessar
+#include<ESP32Servo.h>
+//#include <Servo_ESP32.h>
+Servo Myservo;
+
+
+#define VPIN_BUTTON_1    V4
+
+BLYNK_WRITE(VPIN_BUTTON_1) {
+  int toggleState_1 = param.asInt();
+  if(toggleState_1 == 1){
+  Myservo.write(53);
+  delay(15);
+  }
+  else { 
+  Myservo.write(3);
+  delay(5);
+  }
+}
+
+void setup() {
+ Myservo.attach(5);
+//lcd.init();
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("IOT MONITORING");
+  delay(2000);
+  lcd.clear();
+    lcd.setCursor(0,0);
+  lcd.print(" DIgaag SYSTEM");
+
+    Serial.begin(9600);
+  dht.begin();
+  pinMode(SoilPin,INPUT);
+  pinMode(Ldr,INPUT);
+   pinMode(firePin,INPUT);
+  pinMode(Buzzerpin,OUTPUT);
+  pinMode(Redpin,OUTPUT);
+   pinMode(green,OUTPUT);
+  pinMode(relay1,OUTPUT);
+  pinMode(relay2,OUTPUT);
+  pinMode(relay3,OUTPUT);
+   Blynk.begin(auth, ssid, pass);
+
+  WiFi.begin(ssid, pass);
+  {
+    delay(1000);
+    Serial.print(".");
+//    lcd.clear();
+  }
+  Serial.println("WiFi connected");
+  
+    Serial.println("Ready");    //Test the serial monitor
+  timer.setInterval(100L, DHT22_SENSOR);
+  timer.setInterval(100L, Soil_Sensor);
+    timer.setInterval(300L, LDR_Sensor);
+  timer.setInterval(100L, Fire_Sensor);
+      
+}
+
+void loop() {
+    Blynk.run();
+  timer.run();
+  digitalWrite(green,HIGH);
+//  digitalWrite(green,HIGH);
+//  Soil_Sensor();
+ // DHT22_SENSOR();
+//LDR_Sensor();
+//Fire_Sensor();
+}
+
+
+
+
+void DHT22_SENSOR(){  
+  float temperature = dht.readTemperature(); // Read temperature in Celsius
+  int humidity = dht.readHumidity();
+ Blynk.virtualWrite(V0, temperature);
+
+  Serial.print("Temperature: ");
+  Serial.println(temperature);
+  Serial.println(" °C"); 
+//  Serial.print("Humidity: ");
+//  Serial.print(humidity);
+//  Serial.println(" %");
+
+  
+  // Adjust motor speed based on temperature
+  if (temperature > 35) {
+    // Increase motor speed
+     digitalWrite(relay1, LOW);    // Set the motor speed to maximum (255)
+    //digitalWrite(relay1, HIGH);  // Set motor direction (forward)
+  }
+
+  else {
+    // Decrease motor speed
+    digitalWrite(relay1, HIGH);    // Set the motor speed to a lower value (150)
+  //  digitalWrite(relay1, LOW);  // Set motor direction (forward)
+
+  }
+   lcd.setCursor(0, 1);
+  lcd.print("T: ");
+  lcd.setCursor(4, 1);
+  lcd.print(temperature);
+   
+  lcd.setCursor(10, 1);
+   lcd.print("H: ");
+   lcd.setCursor(12, 1);
+  lcd.print(humidity);
+
+}
+
+void Soil_Sensor(){
+int sensorValue = digitalRead(SoilPin);
+  //Serial.println(sensorValue);
+    int newSen=map(sensorValue ,1,0,0,1);
+     Serial.println(newSen);
+      Blynk.virtualWrite(V1, newSen);
+  if (newSen==1){  
+       digitalWrite(relay3, HIGH);
+  }
+  else{
+ digitalWrite(relay3, LOW);
+  }    
+}
+
+
+////// ldr
+void LDR_Sensor(){
+int value = digitalRead(Ldr);
+//  Serial.println(value);
+    int newVal=map(value ,1,0,0,1);
+   Serial.println(newVal);
+    Blynk.virtualWrite(V2, newVal);
+  if (newVal==1){  
+
+    digitalWrite(relay2, HIGH);
+  }
+  else{
+    digitalWrite(relay2, LOW);
+  }    
+}
+
+
+////// ldr
+void Fire_Sensor(){
+int val = digitalRead(firePin);
+  //Serial.println(val);
+    int newVal=map(val ,1,0,0,1);
+   Serial.println(newVal);
+    Blynk.virtualWrite(V3, newVal);
+  if (newVal==1){  
+       Blynk.logEvent("fire","WARNNG! Fire Detected!"); //Enter your Event 
+       digitalWrite(Redpin, HIGH);
+        digitalWrite(Buzzerpin,HIGH);
+    delay(700);
+      digitalWrite(Buzzerpin,LOW);
+     delay(500);
+     digitalWrite(Buzzerpin,HIGH);
+      delay(700);
+     digitalWrite(Buzzerpin,LOW);
+       delay(500);
+          digitalWrite(Buzzerpin,HIGH);
+           delay(700);
+               digitalWrite(Buzzerpin,LOW);
+      
+    
+  }
+  else{
+   digitalWrite(Redpin, LOW);
+   digitalWrite(Buzzerpin,LOW);
+  }    
+}
